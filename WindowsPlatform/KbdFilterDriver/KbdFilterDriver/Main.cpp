@@ -58,6 +58,16 @@ VOID DriverUnload(PDRIVER_OBJECT pDrv)
 		pHDevStackTop = pHDevStackTop->NextDevice;
 
 		IoDetachDevice(pDevEx->pNextLayerDev);
+		
+		if (pDevEx->pIrp)
+		{
+			// +0x038 CancelRoutine    : 0x8c649598     void  kbdclass!KeyboardClassCancel+0
+			// 不知道为什么,前面不管是否设置CancelRoutine,CancelRoutine成员变了kbdclass!KeyboardClassCancel,用它取消IRP不会蓝屏,自己的在卸载后再加载,按键会蓝屏.
+			//IoSetCancelRoutine(pDevEx->pIrp, IrpReadCancelRoutine);
+			BOOLEAN bRet = IoCancelIrp(pDevEx->pIrp);
+			ASSERT(bRet);
+		}
+
 		IoDeleteSymbolicLink(pDevEx->pusSymName);
 		ExFreePool(pDevEx->pusDevName);
 		ExFreePool(pDevEx->pusSymName);
@@ -237,7 +247,14 @@ NTSTATUS IrpRead(PDEVICE_OBJECT pDev, PIRP pIrp)
 {
 	PIO_STACK_LOCATION pStack = IoGetCurrentIrpStackLocation(pIrp);
 	IoCopyCurrentIrpStackLocationToNext(pIrp);
+
 	IoSetCompletionRoutine(pIrp, IrpReadCompletionRoutine, pDev, true, true, true);
+	//IoSetCancelRoutine(pIrp, IrpReadCancelRoutine);
+	/*PDRIVER_CANCEL pCancelRoutine = IoSetCancelRoutine(pIrp, IrpReadCancelRoutine);
+	if (pCancelRoutine != IrpReadCancelRoutine)
+		ASSERT(0);*/
+
+	((PDEVICE_EXTENTION)pDev->DeviceExtension)->pIrp = pIrp;
 
 	return IoCallDriver(((DEVICE_EXTENTION*)pDev->DeviceExtension)->pNextLayerDev, pIrp);
 }
@@ -252,6 +269,9 @@ NTSTATUS IrpReadCompletionRoutine(PDEVICE_OBJECT pDev, PIRP pIrp, PVOID pContext
 
 	if (NT_SUCCESS(pIrp->IoStatus.Status))
 	{
+		PDEVICE_EXTENTION pDevExt = (PDEVICE_EXTENTION)pDev->DeviceExtension;
+		pDevExt->pIrp = 0;
+
 		PKEYBOARD_INPUT_DATA pMdlAddr = (PKEYBOARD_INPUT_DATA)pIrp->AssociatedIrp.SystemBuffer;
 		ULONG ulCount = pIrp->IoStatus.Information;
 		pStack = 0;
@@ -259,3 +279,14 @@ NTSTATUS IrpReadCompletionRoutine(PDEVICE_OBJECT pDev, PIRP pIrp, PVOID pContext
 
 	return pIrp->IoStatus.Status;
 }
+
+//VOID IrpReadCancelRoutine(PDEVICE_OBJECT pDev, PIRP pIrp)
+//{
+//	PDEVICE_EXTENTION pDevExt = (PDEVICE_EXTENTION)pDev->DeviceExtension;
+//
+//	pIrp->IoStatus.Status = STATUS_CANCELLED;
+//	pIrp->IoStatus.Information = 0;
+//	IoCompleteRequest(pIrp, IO_NO_INCREMENT);
+//
+//	IoReleaseCancelSpinLock(pIrp->CancelIrql);
+//}

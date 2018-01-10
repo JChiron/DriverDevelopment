@@ -20,6 +20,7 @@ typedef struct _DEVICE_EXTENTION
 	PUNICODE_STRING pusDevName{};
 	PUNICODE_STRING pusSymName{};
 	PDEVICE_OBJECT pNextLayerDev{};
+	PIRP pIrp{};
 }DEVICE_EXTENTION, *PDEVICE_EXTENTION;
 
 
@@ -31,4 +32,4 @@ BOOLEAN AttachAllKbdDevice(PDRIVER_OBJECT pDrv);
 extern "C" NTSTATUS ObReferenceObjectByName(PUNICODE_STRING ObjectName, ULONG Attributes, PACCESS_STATE AccessState, ACCESS_MASK DesiredAccess, POBJECT_TYPE ObjectType, KPROCESSOR_MODE AccessMode, PVOID ParseContext, PVOID *Object);
 NTSTATUS IrpRead(PDEVICE_OBJECT pDev, PIRP pIrp);
 NTSTATUS IrpReadCompletionRoutine(PDEVICE_OBJECT pDev, PIRP pIrp, PVOID pContext);
-
+// VOID IrpReadCancelRoutine(PDEVICE_OBJECT pDev, PIRP pIrp);
