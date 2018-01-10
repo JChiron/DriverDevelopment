@@ -259,6 +259,7 @@ NTSTATUS IrpRead(PDEVICE_OBJECT pDev, PIRP pIrp)
 	return IoCallDriver(((DEVICE_EXTENTION*)pDev->DeviceExtension)->pNextLayerDev, pIrp);
 }
 
+// 完成例程可以处理所有的情况,完成|取消|等待等例程.
 #pragma code_seg("") 
 NTSTATUS IrpReadCompletionRoutine(PDEVICE_OBJECT pDev, PIRP pIrp, PVOID pContext)
 {
